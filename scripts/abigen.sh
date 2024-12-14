@@ -3,7 +3,7 @@
 set -e  # Exit on error
 
 # Create directories
-mkdir -p internal/onchain/binding
+mkdir -p internal/onchain/bindings
 mkdir -p build
 
 echo "Compiling contracts..."
@@ -44,9 +44,9 @@ fi
 
 echo "Generating Go bindings..."
 # Generate bindings
-abigen --abi build/GeneNFT.abi --pkg contracts --type GeneNFT --out internal/onchain/binding/gene_nft.go
-abigen --abi build/PCSP.abi --pkg contracts --type PCSPToken --out internal/onchain/binding/pcsp_token.go
-abigen --abi build/Controller.abi --pkg contracts --type Controller --out internal/onchain/binding/controller.go
+abigen --abi build/GeneNFT.abi --pkg contracts --type GeneNFT --out internal/onchain/bindings/gene_nft.go
+abigen --abi build/PCSP.abi --pkg contracts --type PCSPToken --out internal/onchain/bindings/pcsp_token.go
+abigen --abi build/Controller.abi --pkg contracts --type Controller --out internal/onchain/bindings/controller.go
 
 echo "Cleaning up..."
 # Clean up
