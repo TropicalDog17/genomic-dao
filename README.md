@@ -1,4 +1,4 @@
-# Blockchain engineer assignment
+# Backend engineer assignment
 
 ## Table of contents
 * [Description](#description)

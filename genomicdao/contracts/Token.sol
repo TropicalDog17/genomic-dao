@@ -8,7 +8,6 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 contract PostCovidStrokePrevention is ERC20, ERC20Burnable, Ownable {
 
     mapping(uint256 => uint256) riskScoreToAward;
-
     constructor() ERC20("Post-Covid Stroke Prevention", "PCSP") {
         _mint(msg.sender, 1000000000 * 10 ** decimals());
 
@@ -22,7 +21,10 @@ contract PostCovidStrokePrevention is ERC20, ERC20Burnable, Ownable {
         _mint(to, amount);
     }
 
-    function reward(address to, uint256 riskScore) public onlyOwner {
-        // TODO: Implement this method: Award PCSP to the user based on his/her risk score
+    function reward(address to, uint256 riskScore) public onlyOwner returns(uint256) {
+        require(riskScore >= 1 && riskScore <= 4, "No reward for the risk score");
+        uint256 amount = riskScoreToAward[riskScore];
+        _mint(to, amount);
+        return amount;
     }
 }
