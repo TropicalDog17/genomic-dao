@@ -93,7 +93,7 @@ func (s *IntegrationTestSuite) TestCompleteUserFlow() {
 	// Add genomic data field
 	genomicField, err := writer.CreateFormField("genomicData")
 	assert.NoError(t, err)
-	_, err = genomicField.Write([]byte("test data"))
+	_, err = genomicField.Write([]byte("LifeNetwork, Decentralized Science, Blockchain, Genomic Data"))
 	assert.NoError(t, err)
 
 	// Add pubkey field
@@ -135,6 +135,10 @@ func (s *IntegrationTestSuite) TestCompleteUserFlow() {
 	resp, err = http.Get(fmt.Sprintf("http://localhost:8080/retrieve?fileID=%s", uploadResponse.FileID))
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	var retrieveResponse map[string]interface{}
+	err = json.NewDecoder(resp.Body).Decode(&retrieveResponse)
+	assert.NoError(t, err)
+	fmt.Println("Genomic data:", retrieveResponse["genomicData"])
 
 	// 4. Test PCSP balance
 	resp, err = http.Get("http://localhost:8080/pcsp/balance?address=" + testPubKey)

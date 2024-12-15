@@ -60,18 +60,19 @@ avalanche blockchain deploy lifeNetwork
 The swagger will be available at localhost:8080/swagger/index.html
 #### Tests
 
-+ Complete user flow: ./server/server_test.go
++ Complete user flow: [server_test.go](./server/server_test.go)
 
 ##### Result
 
 ```
-Confirmed upload with tx hash: 0x7a1fbd9545438f330e6b75c10d70b92f312d3348cfa3dd776f931d66fa5d208d
-Minted GeneNFT with token ID: 12
-Rewarded PCSP with amount 30000000000000000000 to 0x62f563A2e09c7987dECBFF61fdcC89cd74717721
-[GIN] 2024/12/15 - 16:33:01 | 200 |  2.066610958s |             ::1 | POST     "/upload"
-Raw response body: {"sessionId":"12","message":"Genomic data uploaded successfully","fileId":"e4aff07bdd9ec5be"}
-[GIN] 2024/12/15 - 16:33:01 | 200 |    3.336542ms |             ::1 | GET      "/retrieve?fileID=e4aff07bdd9ec5be"
-[GIN] 2024/12/15 - 16:33:01 | 200 |    2.574792ms |             ::1 | GET      "/pcsp/balance?address=0x62f563A2e09c7987dECBFF61fdcC89cd74717721"
-PCSP balance: 30000000000000000000
+Confirmed upload with tx hash: 0x25481776b12f5b3cb054d3a65d1f5b4ce139c2c5682623e46e225f23b18d6b88
+Minted GeneNFT with token ID: 14
+Rewarded PCSP with amount 225000000000000000000 to 0x62f563A2e09c7987dECBFF61fdcC89cd74717721
+[GIN] 2024/12/15 - 16:38:43 | 200 |  2.085183958s |             ::1 | POST     "/upload"
+Raw response body: {"sessionId":"14","message":"Genomic data uploaded successfully","fileId":"c29814719d660d3f"}
+[GIN] 2024/12/15 - 16:38:43 | 200 |     635.083µs |             ::1 | GET      "/retrieve?fileID=c29814719d660d3f"
+Genomic data: LifeNetwork, Decentralized Science, Blockchain, Genomic Data
+[GIN] 2024/12/15 - 16:38:43 | 200 |    2.436708ms |             ::1 | GET      "/pcsp/balance?address=0x62f563A2e09c7987dECBFF61fdcC89cd74717721"
+PCSP balance: 225000000000000000000
 ```
 
