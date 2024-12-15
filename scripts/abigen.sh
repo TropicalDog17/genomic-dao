@@ -48,7 +48,6 @@ abigen --abi build/GeneNFT.abi --pkg contracts --type GeneNFT --out internal/onc
 abigen --abi build/PCSP.abi --pkg contracts --type PCSPToken --out internal/onchain/bindings/pcsp_token.go
 abigen --abi build/Controller.abi --pkg contracts --type Controller --out internal/onchain/bindings/controller.go
 
-echo "Cleaning up..."
 # Clean up
 rm -rf build
 

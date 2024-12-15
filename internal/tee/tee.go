@@ -47,7 +47,6 @@ func (t *teeService) DecryptData(encryptedData []byte, privKey *ecdsa.PrivateKey
 	nonce := encryptedData[sha256.Size : sha256.Size+12]
 	ciphertext := encryptedData[sha256.Size+12:]
 
-	// Use consistent key derivation
 	key := deriveKey(&privKey.PublicKey)
 
 	block, err := aes.NewCipher(key)
@@ -131,7 +130,6 @@ func (t *teeService) ProcessAndEncrypt(data []byte, pubKey *ecdsa.PublicKey) ([]
 	return result, riskLevel, nil
 }
 
-// Helper functions remain the same
 func bytesToMarkers(data []byte) ([]float64, error) {
 	markers := make([]float64, len(data)/8)
 	for i := range markers {
