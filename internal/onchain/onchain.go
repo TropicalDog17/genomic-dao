@@ -11,14 +11,20 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 )
 
-type OnchainService struct {
+type OnchainService interface {
+	UploadData(docID string) (string, error)
+	ConfirmUpload(docID string, contentHash string, proof string, sessionID string, riskScore int) error
+	GetSession(sessionID string) (*contracts.ControllerUploadSession, error)
+}
+
+type onchainService struct {
 	client     *ethclient.Client
 	auth       *bind.TransactOpts
 	controller *contracts.Controller
 	geneNFT    *contracts.GeneNFT
 }
 
-func NewOnchainService(client *ethclient.Client, auth *bind.TransactOpts, controllerAddr common.Address) *OnchainService {
+func NewOnchainService(client *ethclient.Client, auth *bind.TransactOpts, controllerAddr common.Address) OnchainService {
 	controller, err := contracts.NewController(controllerAddr, client)
 	if err != nil {
 		panic(err)
@@ -34,7 +40,7 @@ func NewOnchainService(client *ethclient.Client, auth *bind.TransactOpts, contro
 		panic(err)
 	}
 
-	return &OnchainService{
+	return &onchainService{
 		client:     client,
 		auth:       auth,
 		controller: controller,
@@ -43,7 +49,7 @@ func NewOnchainService(client *ethclient.Client, auth *bind.TransactOpts, contro
 }
 
 // UploadData starts the upload session on blockchain
-func (s *OnchainService) UploadData(docID string) (string, error) {
+func (s *onchainService) UploadData(docID string) (string, error) {
 	// Call uploadData on controller contract
 	tx, err := s.controller.UploadData(s.auth, docID)
 	if err != nil {
@@ -67,8 +73,7 @@ func (s *OnchainService) UploadData(docID string) (string, error) {
 	return "", fmt.Errorf("failed to get session ID from event")
 }
 
-func (s *OnchainService) ConfirmUpload(docID string, contentHash string, proof string, sessionID string, riskScore int) error {
-
+func (s *onchainService) ConfirmUpload(docID string, contentHash string, proof string, sessionID string, riskScore int) error {
 	// parse sessionID to big.Int
 	bigSessionID, ok := new(big.Int).SetString(sessionID, 10)
 	bigRiskScore := big.NewInt(int64(riskScore))
@@ -105,7 +110,7 @@ func (s *OnchainService) ConfirmUpload(docID string, contentHash string, proof s
 	return nil
 }
 
-func (s *OnchainService) GetSession(sessionID string) (*contracts.ControllerUploadSession, error) {
+func (s *onchainService) GetSession(sessionID string) (*contracts.ControllerUploadSession, error) {
 	// parse sessionID to big.Int
 	bigSessionID, ok := new(big.Int).SetString(sessionID, 10)
 	if !ok {

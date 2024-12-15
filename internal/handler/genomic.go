@@ -16,10 +16,10 @@ import (
 )
 
 type genomicHandler struct {
-	teeService             *tee.TeeService
+	teeService             tee.TeeService
 	geneDataStorageService storage.GeneDataStorageService
 	authService            auth.AuthService
-	onchainService         *onchain.OnchainService
+	onchainService         onchain.OnchainService
 	genomicService         genomic.GenomicService
 }
 
@@ -27,7 +27,7 @@ type GenomicHandler interface {
 	UploadGenomicData(c *gin.Context)
 }
 
-func NewGenomicHandler(teeService *tee.TeeService, geneDataStorageService storage.GeneDataStorageService, authService auth.AuthService, onchainService *onchain.OnchainService) GenomicHandler {
+func NewGenomicHandler(teeService tee.TeeService, geneDataStorageService storage.GeneDataStorageService, authService auth.AuthService, onchainService onchain.OnchainService) GenomicHandler {
 	return &genomicHandler{
 		teeService:             teeService,
 		geneDataStorageService: geneDataStorageService,

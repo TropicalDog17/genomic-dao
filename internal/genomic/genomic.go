@@ -19,10 +19,10 @@ type UploadResult struct {
 }
 
 type genomicService struct {
-	teeService             *tee.TeeService
+	teeService             tee.TeeService
 	geneDataStorageService storage.GeneDataStorageService
 	authService            auth.AuthService
-	onchainService         *onchain.OnchainService
+	onchainService         onchain.OnchainService
 }
 
 type GenomicService interface {
@@ -30,10 +30,10 @@ type GenomicService interface {
 }
 
 func NewGenomicService(
-	teeService *tee.TeeService,
+	teeService tee.TeeService,
 	geneDataStorageService storage.GeneDataStorageService,
 	authService auth.AuthService,
-	onchainService *onchain.OnchainService,
+	onchainService onchain.OnchainService,
 ) GenomicService {
 	return &genomicService{
 		teeService:             teeService,

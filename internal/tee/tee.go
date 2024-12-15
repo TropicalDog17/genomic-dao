@@ -12,11 +12,17 @@ import (
 )
 
 // TeeService provides minimal TEE functionality
-type TeeService struct{}
+type teeService struct{}
+
+type TeeService interface {
+	CalculateRiskScore(encryptedData []byte, key []byte) (int, error)
+	ProcessGeneData(data []byte, publicKey []byte) ([]byte, error)
+	DecryptAndVerify(encryptedData []byte, publicKey []byte) ([]byte, error)
+}
 
 // NewTeeService creates a new TEE instance
-func NewTeeService() *TeeService {
-	return &TeeService{}
+func NewTeeService() TeeService {
+	return &teeService{}
 }
 
 // GeneticData represents processed genetic markers
@@ -26,7 +32,7 @@ type GeneticData struct {
 }
 
 // CalculateRiskScore computes genetic risk score within TEE
-func (t *TeeService) CalculateRiskScore(encryptedData []byte, key []byte) (riskScore int, err error) {
+func (t *teeService) CalculateRiskScore(encryptedData []byte, key []byte) (riskScore int, err error) {
 	// Decrypt and verify data
 	data, err := t.DecryptAndVerify(encryptedData, key)
 	if err != nil {
@@ -62,7 +68,7 @@ func (t *TeeService) CalculateRiskScore(encryptedData []byte, key []byte) (riskS
 }
 
 // ProcessGeneData processes and protects gene data within the TEE
-func (t *TeeService) ProcessGeneData(data []byte, publicKey []byte) ([]byte, error) {
+func (t *teeService) ProcessGeneData(data []byte, publicKey []byte) ([]byte, error) {
 	// Derive a proper 32-byte key using SHA-256
 	key := sha256.Sum256(publicKey)
 
@@ -95,7 +101,7 @@ func (t *TeeService) ProcessGeneData(data []byte, publicKey []byte) ([]byte, err
 }
 
 // DecryptAndVerify decrypts data and verifies its integrity
-func (t *TeeService) DecryptAndVerify(encryptedData []byte, publicKey []byte) ([]byte, error) {
+func (t *teeService) DecryptAndVerify(encryptedData []byte, publicKey []byte) ([]byte, error) {
 	// Input validation
 	if len(encryptedData) == 0 {
 		return nil, errors.New("empty encrypted data")
