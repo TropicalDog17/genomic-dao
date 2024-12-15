@@ -1,0 +1,120 @@
+definitions:
+  handler.ErrorResponse:
+    properties:
+      error:
+        description: Error message
+        example: invalid request format
+        type: string
+    type: object
+  handler.RegisterRequest:
+    properties:
+      address:
+        description: Public key in bytes
+        example: 0x6491414173c71986Ee031307Af447cE1DbDf2ED0
+        type: string
+    type: object
+  handler.RegisterResponse:
+    properties:
+      userID:
+        description: Unique identifier for the registered user
+        example: user123
+        type: string
+    type: object
+info:
+  contact: {}
+paths:
+  /auth/register:
+    post:
+      consumes:
+      - application/json
+      description: Register a new user with their public key
+      parameters:
+      - description: User registration details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handler.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully registered
+          schema:
+            $ref: '#/definitions/handler.RegisterResponse'
+        "400":
+          description: Invalid request
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      summary: Register a new user
+      tags:
+      - auth
+  /pcsp/balance:
+    get:
+      consumes:
+      - application/json
+      description: Get the balance of PCSP tokens for a user
+      parameters:
+      - description: User's address
+        in: query
+        name: address
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Returns balance
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error with error message
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get PCSP balance
+      tags:
+      - pcsp
+  /upload:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Processes genomic data in TEE, encrypts it, calculates risk score,
+        and stores on blockchain
+      parameters:
+      - description: Raw genomic data to be processed
+        in: formData
+        name: genomicData
+        required: true
+        type: string
+      - description: User's public key for authentication
+        in: formData
+        name: pubkey
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Returns transaction hash
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error with error message
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Upload genomic data for processing
+      tags:
+      - genomic
+swagger: "2.0"

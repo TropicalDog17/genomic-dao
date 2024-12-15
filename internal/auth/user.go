@@ -8,15 +8,15 @@ import (
 
 type User struct {
 	gorm.Model
-	ID     uint64 `gorm:"primaryKey"`
-	Pubkey []byte `gorm:"unique,not null"`
+	ID     uint32 `gorm:"primaryKey"`
+	Pubkey string `gorm:"unique,not null"`
 }
 
 type UserRepository interface {
 	Validate(user *User) error
 	Create(user *User) error
-	FindByPubkey(Pubkey []byte) (*User, error)
-	FindByUserID(userID uint64) (*User, error)
+	FindByPubkey(Pubkey string) (*User, error)
+	FindByUserID(userID uint32) (*User, error)
 }
 
 // Implement the UserRepository interface
@@ -49,7 +49,7 @@ func (r *userRepository) Create(user *User) error {
 	return r.db.Create(user).Error
 }
 
-func (r *userRepository) FindByPubkey(p []byte) (*User, error) {
+func (r *userRepository) FindByPubkey(p string) (*User, error) {
 	var user User
 	if err := r.db.Where("pubkey = ?", p).First(&user).Error; err != nil {
 		return nil, err
@@ -57,7 +57,7 @@ func (r *userRepository) FindByPubkey(p []byte) (*User, error) {
 	return &user, nil
 }
 
-func (r *userRepository) FindByUserID(userID uint64) (*User, error) {
+func (r *userRepository) FindByUserID(userID uint32) (*User, error) {
 	var user User
 	if err := r.db.Where("id = ?", userID).First(&user).Error; err != nil {
 		return nil, err

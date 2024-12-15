@@ -1,5 +1,4 @@
 const { ethers } = require("hardhat");
-
 async function main() {
     const [deployer] = await ethers.getSigners();
     
@@ -8,23 +7,43 @@ async function main() {
     console.log("Account balance:", balance);
 
     // Deploy GeneNFT contract
-    const NTFToken = await ethers.getContractFactory("GeneNFT");
-    const ntfToken = await NTFToken.deploy();
-    console.log("NTF Token deployed at address:", ntfToken.target);
+    const GeneNFTToken = await ethers.getContractFactory("GeneNFT");
+    const geneNftToken = await GeneNFTToken.deploy();
+    await geneNftToken.waitForDeployment();
+    console.log("GeneNFT Token deployed at address:", geneNftToken.target);
 
     // Deploy PostCovidStrokePrevention contract
     const PCSPToken = await ethers.getContractFactory("PostCovidStrokePrevention");
     const pcspToken = await PCSPToken.deploy();
+    await pcspToken.waitForDeployment();
     console.log("PCSP Token deployed at address:", pcspToken.target);
 
+    // Deploy Controller
     const Controller = await ethers.getContractFactory("Controller");
-    const controller = await Controller.deploy(ntfToken.target, pcspToken.target);
+    const controller = await Controller.deploy(geneNftToken.target, pcspToken.target);
+    await controller.waitForDeployment();
     console.log("Controller deployed at address:", controller.target);
 
-    // Transfer ownership of GeneNFTToken and PCSPToken to the Controller contract
-    await ntfToken.transferOwnership(controller.target);
-    await pcspToken.transferOwnership(controller.target);
-    console.log("Ownership of NTFToken and PCSPToken transferred to Controller.");
+    // Transfer ownership of tokens to Controller
+    const transferNFTTx = await geneNftToken.transferOwnership(controller.target);
+    await transferNFTTx.wait();
+    console.log("Ownership of GeneNFTToken transferred to Controller");
+
+    const transferPCSPTx = await pcspToken.transferOwnership(controller.target);
+    await transferPCSPTx.wait();
+    console.log("Ownership of PCSPToken transferred to Controller");
+
+    // Verify ownership
+    const nftOwner = await geneNftToken.owner();
+    const pcspOwner = await pcspToken.owner();
+    
+    console.log("Current NFT owner:", nftOwner);
+    console.log("Current PCSP owner:", pcspOwner);
+    console.log("Controller address:", controller.target);
+    
+    if (nftOwner !== controller.target || pcspOwner !== controller.target) {
+        console.error("Ownership transfer failed!");
+    }
 }
 
 main().catch((error) => {

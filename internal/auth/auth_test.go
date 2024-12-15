@@ -9,18 +9,19 @@ import (
 )
 
 var (
-	validAddress = "0x1234567890123456789012345678901234567890"
+	validAddress   = "0x1234567890123456789012345678901234567890"
+	invalidAddress = "0xinvalid"
 )
 
 // Mock repository for testing
 type mockUserRepository struct {
-	users map[uint64]*User
+	users map[uint32]*User
 	err   error
 }
 
 func newMockUserRepository() *mockUserRepository {
 	return &mockUserRepository{
-		users: make(map[uint64]*User),
+		users: make(map[uint32]*User),
 	}
 }
 
@@ -41,19 +42,19 @@ func (m *mockUserRepository) Create(user *User) error {
 	return nil
 }
 
-func (m *mockUserRepository) FindByPubkey(pubkey []byte) (*User, error) {
+func (m *mockUserRepository) FindByPubkey(pubkey string) (*User, error) {
 	if m.err != nil {
 		return nil, m.err
 	}
 	for _, user := range m.users {
-		if bytes.Equal(user.Pubkey, pubkey) {
+		if bytes.Equal([]byte(pubkey), []byte(user.Pubkey)) {
 			return user, nil
 		}
 	}
 	return nil, gorm.ErrRecordNotFound
 }
 
-func (m *mockUserRepository) FindByUserID(userID uint64) (*User, error) {
+func (m *mockUserRepository) FindByUserID(userID uint32) (*User, error) {
 	if m.err != nil {
 		return nil, m.err
 	}
@@ -63,25 +64,42 @@ func (m *mockUserRepository) FindByUserID(userID uint64) (*User, error) {
 	return nil, gorm.ErrRecordNotFound
 }
 
-// AuthService tests
 func TestAuthService_Register(t *testing.T) {
 	tests := []struct {
 		name    string
-		pubkey  []byte
+		address string
 		repoErr error
-		wantErr bool
+		wantErr error
 	}{
 		{
 			name:    "successful registration",
-			pubkey:  []byte("valid-pubkey"),
+			address: validAddress,
 			repoErr: nil,
-			wantErr: false,
+			wantErr: nil,
 		},
 		{
-			name:    "empty pubkey",
-			pubkey:  []byte{},
+			name:    "invalid address",
+			address: invalidAddress,
 			repoErr: nil,
-			wantErr: true,
+			wantErr: ErrInvalidAddress,
+		},
+		{
+			name:    "empty address",
+			address: "",
+			repoErr: nil,
+			wantErr: ErrInvalidAddress,
+		},
+		{
+			name:    "repository error",
+			address: validAddress,
+			repoErr: errors.New("db error"),
+			wantErr: errors.New("db error"),
+		},
+		{
+			name:    "user already exists",
+			address: validAddress,
+			repoErr: nil,
+			wantErr: ErrUserExists,
 		},
 	}
 
@@ -89,16 +107,43 @@ func TestAuthService_Register(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			mockRepo := newMockUserRepository()
 			mockRepo.err = tt.repoErr
+
+			// For "user already exists" test
+			if tt.name == "user already exists" {
+				mockRepo.users[1] = &User{
+					ID:     1,
+					Pubkey: tt.address,
+				}
+			}
+
 			service := NewAuthService(mockRepo)
 
-			userID, err := service.Register(tt.pubkey)
-			if (err != nil) != tt.wantErr {
+			userID, err := service.Register(tt.address)
+
+			// Check error
+			if (err == nil && tt.wantErr != nil) || (err != nil && tt.wantErr == nil) {
+				t.Errorf("Register() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if err != nil && tt.wantErr != nil && err.Error() != tt.wantErr.Error() {
 				t.Errorf("Register() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 
-			if !tt.wantErr && userID == 0 {
-				t.Error("Register() returned userID = 0, want non-zero")
+			// Check userID for successful cases
+			if tt.wantErr == nil {
+				if userID == 0 {
+					t.Error("Register() returned userID = 0, want non-zero")
+				}
+
+				// Verify user was created in repository
+				user, err := mockRepo.FindByPubkey(tt.address)
+				if err != nil {
+					t.Errorf("Failed to find created user: %v", err)
+				}
+				if user.ID != userID {
+					t.Errorf("Created user ID = %v, want %v", user.ID, userID)
+				}
 			}
 		})
 	}
@@ -108,18 +153,25 @@ func TestAuthService_Authenticate(t *testing.T) {
 	tests := []struct {
 		name      string
 		setupRepo func(*mockUserRepository)
-		userID    uint64
+		userID    uint32
 		address   string
 		wantErr   error
 	}{
 		{
 			name: "successful authentication",
 			setupRepo: func(m *mockUserRepository) {
-				m.users[1] = &User{ID: 1, Pubkey: []byte(validAddress)}
+				m.users[1] = &User{ID: 1, Pubkey: validAddress}
 			},
 			userID:  1,
 			address: validAddress,
 			wantErr: nil,
+		},
+		{
+			name:      "invalid address format",
+			setupRepo: func(m *mockUserRepository) {},
+			userID:    1,
+			address:   invalidAddress,
+			wantErr:   ErrInvalidAddress,
 		},
 		{
 			name: "user not found",
@@ -133,18 +185,11 @@ func TestAuthService_Authenticate(t *testing.T) {
 		{
 			name: "unauthorized - ID mismatch",
 			setupRepo: func(m *mockUserRepository) {
-				m.users[1] = &User{ID: 1, Pubkey: []byte("valid-address")}
+				m.users[1] = &User{ID: 1, Pubkey: validAddress}
 			},
 			userID:  2,
 			address: validAddress,
-			wantErr: ErrUserNotFound,
-		},
-		{
-			name:      "empty address",
-			setupRepo: func(m *mockUserRepository) {},
-			userID:    1,
-			address:   "",
-			wantErr:   ErrInvalidAddress,
+			wantErr: ErrUnauthorized,
 		},
 		{
 			name: "repository error",
@@ -164,12 +209,9 @@ func TestAuthService_Authenticate(t *testing.T) {
 			service := NewAuthService(mockRepo)
 
 			err := service.Authenticate(tt.userID, tt.address)
-			if err == nil && tt.wantErr != nil {
-				t.Errorf("Authenticate() error = nil, wantErr %v", tt.wantErr)
-				return
-			}
-			if err != nil && tt.wantErr == nil {
-				t.Errorf("Authenticate() error = %v, wantErr nil", err)
+
+			if (err == nil && tt.wantErr != nil) || (err != nil && tt.wantErr == nil) {
+				t.Errorf("Authenticate() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if err != nil && tt.wantErr != nil && err.Error() != tt.wantErr.Error() {

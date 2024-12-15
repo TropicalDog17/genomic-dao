@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"io"
 )
 
@@ -25,9 +26,9 @@ type GeneticData struct {
 }
 
 // CalculateRiskScore computes genetic risk score within TEE
-func (t *TeeService) CalculateRiskScore(encryptedData []byte, key []byte) (float64, error) {
+func (t *TeeService) CalculateRiskScore(encryptedData []byte, key []byte) (riskScore int, err error) {
 	// Decrypt and verify data
-	data, err := t.decryptAndVerify(encryptedData, key)
+	data, err := t.DecryptAndVerify(encryptedData, key)
 	if err != nil {
 		return 0, err
 	}
@@ -37,49 +38,55 @@ func (t *TeeService) CalculateRiskScore(encryptedData []byte, key []byte) (float
 	if err != nil {
 		return 0, err
 	}
-	var riskScore float64
+	var rawRiskScore float64
 	var weights = []float64{0.1, 0.2, 0.3, 0.4}
 
 	for i, marker := range markers {
 		if i < len(weights) {
-			riskScore += marker * weights[i]
+			rawRiskScore += marker * weights[i]
 		}
 	}
 
-	// Normalize score between 0 and 1
-	riskScore = riskScore / float64(len(markers))
-	if riskScore < 0 {
-		riskScore = 0
-	}
-	if riskScore > 1 {
+	// normalize risk score to be 1,2,3,4
+	if rawRiskScore < 0.25 {
 		riskScore = 1
+	} else if rawRiskScore < 0.5 {
+		riskScore = 2
+	} else if rawRiskScore < 0.75 {
+		riskScore = 3
+	} else {
+		riskScore = 4
 	}
 
 	return riskScore, nil
 }
 
 // ProcessGeneData processes and protects gene data within the TEE
-func (t *TeeService) ProcessGeneData(data []byte, key []byte) ([]byte, error) {
-	// First calculate hash
+func (t *TeeService) ProcessGeneData(data []byte, publicKey []byte) ([]byte, error) {
+	// Derive a proper 32-byte key using SHA-256
+	key := sha256.Sum256(publicKey)
+
+	// Calculate hash of original data
 	hash := sha256.Sum256(data)
 
-	// Encrypt data using AES-GCM
-	block, err := aes.NewCipher(key)
+	// Create AES-256 cipher
+	block, err := aes.NewCipher(key[:])
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("creating cipher: %w", err)
 	}
 
 	gcm, err := cipher.NewGCM(block)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("creating GCM: %w", err)
 	}
 
+	// Generate random nonce
 	nonce := make([]byte, gcm.NonceSize())
 	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("generating nonce: %w", err)
 	}
 
-	// Combine hash and data before encryption
+	// Combine hash and data
 	combined := append(hash[:], data...)
 
 	// Encrypt the combined data
@@ -87,40 +94,55 @@ func (t *TeeService) ProcessGeneData(data []byte, key []byte) ([]byte, error) {
 	return ciphertext, nil
 }
 
-// decryptAndVerify decrypts data and verifies its integrity
-func (t *TeeService) decryptAndVerify(encryptedData []byte, key []byte) ([]byte, error) {
-	block, err := aes.NewCipher(key)
+// DecryptAndVerify decrypts data and verifies its integrity
+func (t *TeeService) DecryptAndVerify(encryptedData []byte, publicKey []byte) ([]byte, error) {
+	// Input validation
+	if len(encryptedData) == 0 {
+		return nil, errors.New("empty encrypted data")
+	}
+
+	// Derive the same 32-byte key using SHA-256
+	key := sha256.Sum256(publicKey)
+
+	// Create AES-256 cipher
+	block, err := aes.NewCipher(key[:])
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("creating cipher: %w", err)
 	}
 
 	gcm, err := cipher.NewGCM(block)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("creating GCM: %w", err)
 	}
 
+	// Extract nonce
 	nonceSize := gcm.NonceSize()
 	if len(encryptedData) < nonceSize {
-		return nil, errors.New("ciphertext too short")
+		return nil, errors.New("invalid ciphertext: too short")
 	}
 
-	nonce, ciphertext := encryptedData[:nonceSize], encryptedData[nonceSize:]
+	nonce := encryptedData[:nonceSize]
+	ciphertext := encryptedData[nonceSize:]
+
+	// Decrypt the data
 	plaintext, err := gcm.Open(nil, nonce, ciphertext, nil)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("decryption failed: %w", err)
 	}
 
-	// Separate hash and data
+	// Verify data format
 	if len(plaintext) < sha256.Size {
-		return nil, errors.New("invalid data format")
+		return nil, errors.New("invalid data format: missing hash")
 	}
+
+	// Extract hash and data
 	storedHash := plaintext[:sha256.Size]
 	data := plaintext[sha256.Size:]
 
-	// Verify hash
+	// Calculate and verify hash
 	calculatedHash := sha256.Sum256(data)
 	if !compareHashes(calculatedHash[:], storedHash) {
-		return nil, errors.New("data integrity check failed")
+		return nil, errors.New("data integrity verification failed")
 	}
 
 	return data, nil
@@ -128,10 +150,6 @@ func (t *TeeService) decryptAndVerify(encryptedData []byte, key []byte) ([]byte,
 
 // bytesToMarkers converts byte slice to float64 markers
 func bytesToMarkers(data []byte) ([]float64, error) {
-	if len(data)%8 != 0 {
-		return nil, errors.New("invalid data length for markers")
-	}
-
 	markers := make([]float64, len(data)/8)
 	for i := range markers {
 		markers[i] = float64(binary.LittleEndian.Uint64(data[i*8:(i+1)*8])) / float64(1<<63)

@@ -1,19 +1,23 @@
 package storage
 
-import "gorm.io/gorm"
+import (
+	"encoding/hex"
+
+	"gorm.io/gorm"
+)
 
 // GeneData represents the structure to hold gene data and associated information.
 type GeneData struct {
 	gorm.Model
 	FileID        string
-	UserID        uint64
-	DataHash      []byte // Hash of the encrypted gene data.
-	Signature     []byte // Signature of the hash.
-	EncryptedData []byte // The encrypted gene data.
+	UserID        uint32
+	EncryptedData []byte
+	DataHash      []byte
+	Signature     []byte
 }
 
 type GenDataRepository interface {
-	StoreGeneData(userID uint64, encryptedData []byte, signatureBytes []byte, hashBytes []byte) (string, error)
+	StoreGeneData(userID uint32, encryptedData []byte, signatureBytes []byte, hashBytes []byte) (string, error)
 	RetrieveGeneData(fileID string) ([]byte, error)
 }
 
@@ -25,11 +29,14 @@ func NewGenDataRepository(db *gorm.DB) GenDataRepository {
 	return &genDataRepository{db}
 }
 
-func (r *genDataRepository) StoreGeneData(userID uint64, encryptedData []byte, signatureBytes []byte, hashBytes []byte) (string, error) {
+func (r *genDataRepository) StoreGeneData(userID uint32, encryptedData []byte, signatureBytes []byte, hashBytes []byte) (string, error) {
+	fileID := hex.EncodeToString(hashBytes[:8])
 	geneData := GeneData{
+		FileID:        fileID,
 		UserID:        userID,
 		EncryptedData: encryptedData,
 		DataHash:      hashBytes,
+		Signature:     signatureBytes,
 	}
 
 	if err := r.db.Create(&geneData).Error; err != nil {

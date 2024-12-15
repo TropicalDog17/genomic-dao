@@ -16,7 +16,6 @@ type OnchainService struct {
 	auth       *bind.TransactOpts
 	controller *contracts.Controller
 	geneNFT    *contracts.GeneNFT
-	pcspToken  *contracts.PCSPToken
 }
 
 func NewOnchainService(client *ethclient.Client, auth *bind.TransactOpts, controllerAddr common.Address) *OnchainService {
@@ -35,22 +34,11 @@ func NewOnchainService(client *ethclient.Client, auth *bind.TransactOpts, contro
 		panic(err)
 	}
 
-	pcspTokenAddr, err := controller.PcspToken(nil)
-	if err != nil {
-		panic(err)
-	}
-
-	pcspToken, err := contracts.NewPCSPToken(pcspTokenAddr, client)
-	if err != nil {
-		panic(err)
-	}
-
 	return &OnchainService{
 		client:     client,
 		auth:       auth,
 		controller: controller,
 		geneNFT:    geneNFT,
-		pcspToken:  pcspToken,
 	}
 }
 
@@ -111,7 +99,7 @@ func (s *OnchainService) ConfirmUpload(docID string, contentHash string, proof s
 
 		event2, err := s.controller.ParsePCSPRewarded(*log)
 		if err == nil && event2 != nil {
-			fmt.Printf("Rewarded PCSP with amount: %s\n", event2.Amount.String())
+			fmt.Printf("Rewarded PCSP with amount %s to %s\n", event2.Amount.String(), event2.User.String())
 		}
 	}
 	return nil
@@ -131,8 +119,4 @@ func (s *OnchainService) GetSession(sessionID string) (*contracts.ControllerUplo
 	}
 
 	return &data, nil
-}
-
-func (s *OnchainService) GetPcspTokenBalance(address *common.Address) (*big.Int, error) {
-	return s.pcspToken.BalanceOf(nil, *address)
 }
