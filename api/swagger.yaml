@@ -6,6 +6,17 @@ definitions:
         example: invalid request format
         type: string
     type: object
+  handler.GenomicDataResponse:
+    properties:
+      genomicData:
+        example: ATCG...
+        type: string
+    type: object
+  handler.PCSPBalanceResponse:
+    properties:
+      balance:
+        type: string
+    type: object
   handler.RegisterRequest:
     properties:
       address:
@@ -18,6 +29,18 @@ definitions:
       userID:
         description: Unique identifier for the registered user
         example: user123
+        type: string
+    type: object
+  handler.UploadResponse:
+    properties:
+      fileId:
+        example: file_123
+        type: string
+      message:
+        example: Upload successful
+        type: string
+      sessionId:
+        example: sess_123
         type: string
     type: object
 info:
@@ -68,20 +91,41 @@ paths:
       - application/json
       responses:
         "200":
-          description: Returns balance
+          description: OK
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/handler.PCSPBalanceResponse'
         "500":
-          description: Internal server error with error message
+          description: Internal Server Error
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/handler.ErrorResponse'
       summary: Get PCSP balance
       tags:
       - pcsp
+  /retrieve:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves genomic data from the blockchain
+      parameters:
+      - description: File ID of the genomic data
+        in: query
+        name: fileID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.GenomicDataResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      summary: Retrieve genomic data
+      tags:
+      - genomic
   /upload:
     post:
       consumes:
@@ -103,17 +147,13 @@ paths:
       - application/json
       responses:
         "200":
-          description: Returns transaction hash
+          description: OK
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/handler.UploadResponse'
         "500":
-          description: Internal server error with error message
+          description: Internal Server Error
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/handler.ErrorResponse'
       summary: Upload genomic data for processing
       tags:
       - genomic

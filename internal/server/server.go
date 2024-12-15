@@ -78,11 +78,15 @@ func route(db *gorm.DB) *gin.Engine {
 	})
 	r.GET("/pcsp/balance", pcspHandler.GetPCSPBalance)
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))
+
 	// Create a new user
 	r.POST("/auth/register", authHandler.Register)
 
 	// Upload genomic data
 	r.POST("/upload", genomicHandler.UploadGenomicData)
+
+	// Retrieve genomic data
+	r.GET("/retrieve", genomicHandler.RetrieveGenomicData)
 
 	return r
 }

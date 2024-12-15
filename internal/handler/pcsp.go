@@ -20,21 +20,25 @@ func NewPCSPHandler(pcspService onchain.PcspService) PCSPHandler {
 	}
 }
 
+type PCSPBalanceResponse struct {
+	Balance string `json:"balance"`
+}
+
 // @Summary Get PCSP balance
 // @Description Get the balance of PCSP tokens for a user
 // @Tags pcsp
 // @Accept json
 // @Produce json
 // @Param address query string true "User's address"
-// @Success 200 {object} map[string]string "Returns balance"
-// @Failure 500 {object} map[string]string "Internal server error with error message"
+// @Success 200 {object} PCSPBalanceResponse
+// @Failure 500 {object} ErrorResponse
 // @Router /pcsp/balance [get]
 func (h *pcspHandler) GetPCSPBalance(c *gin.Context) {
 	address := c.Query("address")
 	ethAddress := common.HexToAddress(address)
 	balance, err := h.pcspService.GetTokenBalance(&ethAddress)
 	if err != nil {
-		c.JSON(500, gin.H{"error": err.Error()})
+		c.JSON(500, ErrorResponse{Error: err.Error()})
 		return
 	}
 	c.JSON(200, gin.H{"balance": balance.String()})

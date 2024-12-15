@@ -85,21 +85,53 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "Returns balance",
+                        "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/handler.PCSPBalanceResponse"
                         }
                     },
                     "500": {
-                        "description": "Internal server error with error message",
+                        "description": "Internal Server Error",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/retrieve": {
+            "get": {
+                "description": "Retrieves genomic data from the blockchain",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "genomic"
+                ],
+                "summary": "Retrieve genomic data",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "File ID of the genomic data",
+                        "name": "fileID",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handler.GenomicDataResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
                         }
                     }
                 }
@@ -136,21 +168,15 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "Returns transaction hash",
+                        "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/handler.UploadResponse"
                         }
                     },
                     "500": {
-                        "description": "Internal server error with error message",
+                        "description": "Internal Server Error",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/handler.ErrorResponse"
                         }
                     }
                 }
@@ -165,6 +191,23 @@ const docTemplate = `{
                     "description": "Error message",
                     "type": "string",
                     "example": "invalid request format"
+                }
+            }
+        },
+        "handler.GenomicDataResponse": {
+            "type": "object",
+            "properties": {
+                "genomicData": {
+                    "type": "string",
+                    "example": "ATCG..."
+                }
+            }
+        },
+        "handler.PCSPBalanceResponse": {
+            "type": "object",
+            "properties": {
+                "balance": {
+                    "type": "string"
                 }
             }
         },
@@ -185,6 +228,23 @@ const docTemplate = `{
                     "description": "Unique identifier for the registered user",
                     "type": "string",
                     "example": "user123"
+                }
+            }
+        },
+        "handler.UploadResponse": {
+            "type": "object",
+            "properties": {
+                "fileId": {
+                    "type": "string",
+                    "example": "file_123"
+                },
+                "message": {
+                    "type": "string",
+                    "example": "Upload successful"
+                },
+                "sessionId": {
+                    "type": "string",
+                    "example": "sess_123"
                 }
             }
         }

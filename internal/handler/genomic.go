@@ -15,6 +15,17 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// Response structures for Swagger documentation
+type GenomicDataResponse struct {
+	GenomicData string `json:"genomicData" example:"ATCG..."`
+}
+
+type UploadResponse struct {
+	SessionID string `json:"sessionId" example:"sess_123"`
+	Message   string `json:"message" example:"Upload successful"`
+	FileID    string `json:"fileId" example:"file_123"`
+}
+
 type genomicHandler struct {
 	teeService             tee.TeeService
 	geneDataStorageService storage.GeneDataStorageService
@@ -25,6 +36,7 @@ type genomicHandler struct {
 
 type GenomicHandler interface {
 	UploadGenomicData(c *gin.Context)
+	RetrieveGenomicData(c *gin.Context)
 }
 
 func NewGenomicHandler(teeService tee.TeeService, geneDataStorageService storage.GeneDataStorageService, authService auth.AuthService, onchainService onchain.OnchainService) GenomicHandler {
@@ -33,7 +45,36 @@ func NewGenomicHandler(teeService tee.TeeService, geneDataStorageService storage
 		geneDataStorageService: geneDataStorageService,
 		authService:            authService,
 		onchainService:         onchainService,
+		genomicService:         genomic.NewGenomicService(teeService, geneDataStorageService, authService, onchainService),
 	}
+}
+
+// @Summary Retrieve genomic data
+// @Description Retrieves genomic data from the blockchain
+// @Tags genomic
+// @Accept json
+// @Produce json
+// @Param fileID query string true "File ID of the genomic data"
+// @Success 200 {object} GenomicDataResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /retrieve [get]
+func (h *genomicHandler) RetrieveGenomicData(c *gin.Context) {
+	fileID := c.Query("fileID")
+	privKey, _, _, err := genomicCrypto.DeriveEcdsaKeyPairAndEthAddress(os.Getenv("PRIVATE_KEY"))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
+		return
+	}
+
+	genomicData, err := h.genomicService.RetrieveGenomicData(fileID, privKey)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, GenomicDataResponse{
+		GenomicData: string(genomicData),
+	})
 }
 
 // @Summary Upload genomic data for processing
@@ -43,43 +84,37 @@ func NewGenomicHandler(teeService tee.TeeService, geneDataStorageService storage
 // @Produce json
 // @Param genomicData formData string true "Raw genomic data to be processed"
 // @Param pubkey formData string true "User's public key for authentication"
-// @Success 200 {object} map[string]string "Returns transaction hash"
-// @Failure 500 {object} map[string]string "Internal server error with error message"
+// @Success 200 {object} UploadResponse
+// @Failure 500 {object} ErrorResponse
 // @Router /upload [post]
 func (h *genomicHandler) UploadGenomicData(c *gin.Context) {
 	genomicData := c.PostForm("genomicData")
 	pubkey := c.PostForm("pubkey")
 
-	// Get private key from env
 	privateKey, _, _, err := genomicCrypto.DeriveEcdsaKeyPairAndEthAddress(os.Getenv("PRIVATE_KEY"))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
 		return
 	}
 
 	result, err := h.genomicService.ProcessAndUploadGenomicData([]byte(genomicData), pubkey, privateKey)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"sessionId": result.SessionID,
-		"message":   result.Message,
+	c.JSON(http.StatusOK, UploadResponse{
+		SessionID: result.SessionID,
+		Message:   result.Message,
+		FileID:    result.FileID,
 	})
 }
 
-// signEncryptedGeneData generates a hash of the encrypted data and then signs it using the provided private key.
-// It returns the hash and the corresponding digital signature.
 func signEncryptedGeneData(privateKey *ecdsa.PrivateKey, encryptedData []byte) ([]byte, []byte, error) {
-	// Generate the hash of the encrypted data
 	hashData := crypto.Keccak256Hash(encryptedData).Bytes()
-
-	// Sign the hash using the provided private key
 	signature, err := crypto.Sign(hashData, privateKey)
 	if err != nil {
 		return nil, nil, err
 	}
-
 	return hashData, signature, nil
 }
