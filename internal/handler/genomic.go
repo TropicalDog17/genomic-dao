@@ -2,33 +2,32 @@ package handler
 
 import (
 	"crypto/ecdsa"
-	"encoding/hex"
-	"fmt"
 	"net/http"
 	"os"
 
 	"github.com/TropicalDog17/genomic-dao-service/internal/auth"
+	"github.com/TropicalDog17/genomic-dao-service/internal/genomic"
 	"github.com/TropicalDog17/genomic-dao-service/internal/onchain"
 	"github.com/TropicalDog17/genomic-dao-service/internal/storage"
 	"github.com/TropicalDog17/genomic-dao-service/internal/tee"
 	genomicCrypto "github.com/TropicalDog17/genomic-dao-service/pkg/crypto"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 )
 
 type genomicHandler struct {
 	teeService             *tee.TeeService
 	geneDataStorageService storage.GeneDataStorageService
-	authService            *auth.AuthService
+	authService            auth.AuthService
 	onchainService         *onchain.OnchainService
+	genomicService         genomic.GenomicService
 }
 
 type GenomicHandler interface {
 	UploadGenomicData(c *gin.Context)
 }
 
-func NewGenomicHandler(teeService *tee.TeeService, geneDataStorageService storage.GeneDataStorageService, authService *auth.AuthService, onchainService *onchain.OnchainService) GenomicHandler {
+func NewGenomicHandler(teeService *tee.TeeService, geneDataStorageService storage.GeneDataStorageService, authService auth.AuthService, onchainService *onchain.OnchainService) GenomicHandler {
 	return &genomicHandler{
 		teeService:             teeService,
 		geneDataStorageService: geneDataStorageService,
@@ -51,65 +50,23 @@ func (h *genomicHandler) UploadGenomicData(c *gin.Context) {
 	genomicData := c.PostForm("genomicData")
 	pubkey := c.PostForm("pubkey")
 
-	// auth the user use the public key for demo simplicity
-	user, err := h.authService.UserRepository.FindByPubkey(pubkey)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	// Upload the genomic data
-	data, err := h.teeService.ProcessGeneData([]byte(genomicData), []byte(pubkey))
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	// get user private key from env for simplicity
+	// Get private key from env
 	privateKey, _, _, err := genomicCrypto.DeriveEcdsaKeyPairAndEthAddress(os.Getenv("PRIVATE_KEY"))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
 	}
 
-	// Sign the genomic data
-	hash, signature, err := signEncryptedGeneData(privateKey, data)
+	result, err := h.genomicService.ProcessAndUploadGenomicData([]byte(genomicData), pubkey, privateKey)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	fmt.Println("Genomic data signed successfully")
-
-	// Store the encrypted genomic data and other details in the storage
-	fileID, err := h.geneDataStorageService.StoreGeneData(user.ID, data, hash, signature)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	riskScore, err := h.teeService.CalculateRiskScore(data, []byte(pubkey))
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	fmt.Println("Risk score calculated successfully", riskScore)
-
-	sessionId, err := h.onchainService.UploadData(fileID)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	// Confirm the genomic data upload
-	docId := uuid.New().String()
-	err = h.onchainService.ConfirmUpload(docId, hex.EncodeToString(hash), "0x1234", sessionId, riskScore)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-	}
-
-	c.JSON(http.StatusOK, gin.H{"sessionId": sessionId, "message": "Genomic data uploaded successfully"})
-
+	c.JSON(http.StatusOK, gin.H{
+		"sessionId": result.SessionID,
+		"message":   result.Message,
+	})
 }
 
 // signEncryptedGeneData generates a hash of the encrypted data and then signs it using the provided private key.

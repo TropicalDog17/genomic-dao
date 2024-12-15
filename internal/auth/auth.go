@@ -7,17 +7,21 @@ import (
 	"gorm.io/gorm"
 )
 
-type AuthService struct {
+type authService struct {
 	UserRepository UserRepository
 }
+type AuthService interface {
+	Register(address string) (uint32, error)
+	Authenticate(address string) (*User, error)
+}
 
-func NewAuthService(userRepository UserRepository) *AuthService {
-	return &AuthService{
+func NewAuthService(userRepository UserRepository) AuthService {
+	return &authService{
 		UserRepository: userRepository,
 	}
 }
 
-func (s *AuthService) Register(address string) (uint32, error) {
+func (s *authService) Register(address string) (uint32, error) {
 	// sanitize the address
 	if ok := ValidateAddress(address); !ok {
 		return 0, ErrInvalidAddress
@@ -36,24 +40,21 @@ func (s *AuthService) Register(address string) (uint32, error) {
 	return userID, nil
 }
 
-func (s *AuthService) Authenticate(userID uint32, address string) error {
+func (s *authService) Authenticate(address string) (*User, error) {
 	// sanitize the address
 	if ok := ValidateAddress(address); !ok {
-		return ErrInvalidAddress
+		return nil, ErrInvalidAddress
 	}
 
 	user, err := s.UserRepository.FindByPubkey(address)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
-			return ErrUserNotFound
+			return nil, ErrUserNotFound
 		}
-		return err
+		return nil, err
 	}
 
-	if user.ID != userID {
-		return ErrUnauthorized
-	}
-	return nil
+	return user, nil
 }
 
 // ValidateAddress checks if the address is valid Ethereum address

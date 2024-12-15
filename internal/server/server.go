@@ -60,8 +60,6 @@ func route(db *gorm.DB) *gin.Engine {
 		panic(fmt.Errorf("failed to create transactor: %v", err))
 	}
 	authService := auth.NewAuthService(auth.NewUserRepository(db))
-	// storageService := storage.NewGenDataRepository(db)
-
 	authHandler := handler.NewAuthHandler(authService)
 	teeService := tee.NewTeeService()
 	geneDataStorageService := storage.NewGeneDataStorageService(db)

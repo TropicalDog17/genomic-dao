@@ -8,14 +8,14 @@ import (
 )
 
 type authHandler struct {
-	authService *auth.AuthService
+	authService auth.AuthService
 }
 
 type AuthHandler interface {
 	Register(c *gin.Context)
 }
 
-func NewAuthHandler(authService *auth.AuthService) AuthHandler {
+func NewAuthHandler(authService auth.AuthService) AuthHandler {
 	return &authHandler{
 		authService,
 	}

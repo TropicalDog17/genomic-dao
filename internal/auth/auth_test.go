@@ -208,7 +208,7 @@ func TestAuthService_Authenticate(t *testing.T) {
 			tt.setupRepo(mockRepo)
 			service := NewAuthService(mockRepo)
 
-			err := service.Authenticate(tt.userID, tt.address)
+			_, err := service.Authenticate(tt.address)
 
 			if (err == nil && tt.wantErr != nil) || (err != nil && tt.wantErr == nil) {
 				t.Errorf("Authenticate() error = %v, wantErr %v", err, tt.wantErr)
