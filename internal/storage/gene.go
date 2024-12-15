@@ -25,10 +25,12 @@ type genDataRepository struct {
 	db *gorm.DB
 }
 
+// NewGenDataRepository creates a new gene data repository.
 func NewGenDataRepository(db *gorm.DB) GenDataRepository {
 	return &genDataRepository{db}
 }
 
+// StoreGeneData stores gene data in the database.
 func (r *genDataRepository) StoreGeneData(userID uint32, encryptedData []byte, signatureBytes []byte, hashBytes []byte) (string, error) {
 	fileID := hex.EncodeToString(hashBytes[:8])
 	geneData := GeneData{
@@ -46,6 +48,7 @@ func (r *genDataRepository) StoreGeneData(userID uint32, encryptedData []byte, s
 	return geneData.FileID, nil
 }
 
+// RetrieveGeneData retrieves gene data from the database.
 func (r *genDataRepository) RetrieveGeneData(fileID string) ([]byte, error) {
 	var geneData GeneData
 	if err := r.db.Where("file_id = ?", fileID).First(&geneData).Error; err != nil {
